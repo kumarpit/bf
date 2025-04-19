@@ -1,6 +1,9 @@
 #lang br/quicklang
 (require "parser.rkt")
 
+;; String Port -> Syntax Object
+;; Returns module containing the parse tree of the BF program specified
+;; in `path`
 (define (read-syntax path port)
   (define parse-tree (parse path (make-tokenizer port)))
   (define module-datum `(module bf-mod "../expander.rkt"
