@@ -50,14 +50,14 @@
 (provide bf-loop)
 
 ;; State (listof Operation) -> State
-;; Applies the list of BF-FUNC to the state and returns the final state
+;; Applies the list of Operation to the state and returns the final state
 (define (fold-funcs initial-state bf-funcs)
   (for/fold ([current-state initial-state])
             ([bf-func (in-list bf-funcs)])
     (bf-func current-state)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; BF Operations
+;; BF OPERATIONS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Operation is State -> State
@@ -79,7 +79,7 @@
         (syntax-parameterize ([ptr (make-rename-transformer #'_ptr)])
           body)))))
 
-;; Jump table for bf-op -> Operation
+;; Jump table for `bf-op` tokens to Operation
 (define-macro-cases bf-op
   [(bf-op ">") #'gt]
   [(bf-op "<") #'lt]
