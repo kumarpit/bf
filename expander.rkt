@@ -8,14 +8,14 @@
 (define BF-BUFFER-SIZE 30000)
 
 ;; Vector Number -> Number
-;; Returns the value of arr[ptr]
-(define (current-byte arr ptr) (vector-ref arr ptr))
+;; Returns the value of vec[ptr]
+(define (current-byte vec ptr) (vector-ref vec ptr))
 
 ;; Vector Number -> Vector
-;; EFFECT: Mutates the value at arr[ptr] to val
-(define (set-current-byte arr ptr val)
-  (vector-set! arr ptr val)
-  arr)
+;; EFFECT: Mutates the value at vec[ptr] to val
+(define (set-current-byte vec ptr val)
+  (vector-set! vec ptr val)
+  vec)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; EXPANDER
@@ -40,7 +40,7 @@
 
 (define-macro (bf-loop "[" OP-OR-LOOP-ARG ... "]")
   #'(λ (state)
-      (let* ([arr (first state)]
+      (let* ([vec (first state)]
              [ptr (second state)])
         (for/fold ([current-state state])
                   ([i (in-naturals)]
@@ -62,6 +62,23 @@
 
 ;; Operation is State -> State
 
+(begin-for-syntax
+  (define (make-define-op-syntax-param)
+    (λ (stx)
+      (raise-syntax-error (syntax-e stx) "Can only be used inside define-op"))))
+
+(require racket/stxparam)
+(define-syntax-parameter vec (make-define-op-syntax-param))
+(define-syntax-parameter ptr (make-define-op-syntax-param))
+
+(define-syntax-rule (define-op name body)
+  (define (name state)
+    (let* ([_vec (first state)]
+           [_ptr (second state)])
+      (syntax-parameterize ([vec (make-rename-transformer #'_vec)])
+        (syntax-parameterize ([ptr (make-rename-transformer #'_ptr)])
+          body)))))
+
 ;; Jump table for bf-op -> Operation
 (define-macro-cases bf-op
   [(bf-op ">") #'gt]
@@ -74,37 +91,15 @@
 
 ;; Operation definitions
 
-(define (gt state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (list arr (add1 ptr))))
-
-(define (lt state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (list arr (sub1 ptr))))
-
-(define (plus state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (list
-     (set-current-byte arr ptr (add1 (current-byte arr ptr)))
-     ptr)))
-
-(define (minus state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (list
-     (set-current-byte arr ptr (sub1 (current-byte arr ptr)))
-     ptr)))
-
-(define (period state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (write-byte (current-byte arr ptr))
-    (list arr ptr)))
-
-(define (comma state)
-  (let* ([arr (first state)]
-         [ptr (second state)])
-    (list (set-current-byte arr ptr (read-byte)) ptr)))
+(define-op gt (list vec (add1 ptr)))
+(define-op lt (list vec (sub1 ptr)))
+(define-op plus (list
+                 (set-current-byte vec ptr (add1 (current-byte vec ptr)))
+                 ptr))
+(define-op minus (list
+                  (set-current-byte vec ptr (sub1 (current-byte vec ptr)))
+                  ptr))
+(define-op period (begin
+                    (write-byte (current-byte vec ptr))
+                    (list vec ptr)))
+(define-op comma (list (set-current-byte vec ptr (read-byte)) ptr))
